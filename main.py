@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 
 import re
-from game import Board, Ship, Orientation, Collision, OffEdge
-from prompts import PromptQuit, PromptEnum, PromptGridLoc
+from board import Board, Collision, OffEdge
+from ship import generate_ships, ShipOrientation
+from prompt import PromptQuit, PromptEnum, PromptGridLoc
 
 def main():
     print("Place ships")
 
     board = Board()
-    ships = (
-        Ship('Carrier', 5, 'green'),
-        Ship('Battleship', 4, 'yellow'), Ship('Destroyer', 3, 'blue'),
-        Ship('Submarine', 3, 'magenta'), Ship('Patrol boat', 2, 'cyan'))
 
-    for ship in ships:
+    for ship in generate_ships():
         board.draw()
 
         ship.orientation = PromptEnum(
             f'Will your {ship.name} ({ship.length} spots) be:',
-            Orientation).ask()
+            ShipOrientation).ask()
 
-        end = 'left' if ship.orientation == Orientation.HORIZONTAL else 'top'
+        if ship.orientation == ShipOrientation.HORIZONTAL:
+            end = 'left'
+        else:
+            end = 'top'
+
         while True:
             try:
                 ship.start = PromptGridLoc(

@@ -26,7 +26,7 @@ class PromptEnum:
 
             try:
                 ans_int = int(ans)
-            except ValueError as e:
+            except ValueError:
                 continue
             try:
                 return self.enum_cls(ans_int)

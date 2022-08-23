@@ -1,23 +1,10 @@
-from enum import Enum
 from termcolor import colored
+
+from ship import ShipOrientation
 
 class PlacementError(Exception): pass
 class Collision(PlacementError): pass
 class OffEdge(PlacementError): pass
-
-
-class Orientation(Enum):
-    VERTICAL = 1
-    HORIZONTAL = 2
-
-
-class Ship:
-    def __init__(self, name, length, color):
-        self.name = name
-        self.length = length
-        self.color = color
-        self.start = None
-        self.orientation = None
 
 
 class Board(list):
@@ -47,7 +34,7 @@ class Board(list):
 
 
     def add_ship(self, ship):
-        if ship.orientation == Orientation.HORIZONTAL:
+        if ship.orientation == ShipOrientation.HORIZONTAL:
             row = ship.start[0]
             col_start = ship.start[1]
             col_end = ship.start[1] + ship.length
