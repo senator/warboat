@@ -9,7 +9,7 @@ def battle(player_board, opponent_board):
 
     while not finished:
         opponent_board.draw(label='Billy', draw_ships=False)
-        player_board.draw(label='You', highlight_player=True)
+        player_board.draw(label='You', highlight_player=True, show_legend=True)
         attack_loc = prompt_attack()
 
         # XXX temporary

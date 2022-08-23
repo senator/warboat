@@ -1,6 +1,7 @@
+from random import choice, randint
 from termcolor import colored
 
-from ship import ShipOrientation
+from ship import ShipOrientation, generate_ships
 
 class PlacementError(Exception): pass
 class Collision(PlacementError): pass
@@ -19,12 +20,17 @@ class Board(list):
         for i in range(10):
             self.append([blank_value, ] * 10)
 
-    def draw(self, label='<NO LABEL>', highlight_player=False, draw_ships=True):
+    def draw( self,
+        label='<NO LABEL>',
+        highlight_player=False, draw_ships=True, show_legend=False):
         label = '%-16s' % label
         print(
             colored(label, attrs=['reverse']) if highlight_player else label,
             end='')
-        print('   1 2 3 4 5 6 7 8 9 10')
+        print('   1 2 3 4 5 6 7 8 9 10', end='')
+        if show_legend:
+            print('        Legend:', end='')
+        print()
         for row in range(10):
             print((' ' * 17) + chr(ord('A') + row) + ' ', end='')
             for col in range(10):
@@ -34,7 +40,15 @@ class Board(list):
                 else:
                     s = colored('  ', on_color='on_' + ship.color)
                 print(s, end='')
-            print('')
+            if show_legend and row - 1 < len(self.ships):
+                if row == 0:
+                    print('        -------', end='')
+                else:
+                    lship = self.ships[row - 1]
+                    print('        %s (%d)' %
+                        (colored(lship.name, lship.color), lship.length),
+                        end='')
+            print()
 
 
     def add_ship(self, ship):
@@ -62,3 +76,19 @@ class Board(list):
                 raise OffEdge from e
             for row in range(row_start, row_end):
                 self[row][col] = ship
+
+        self.ships.append(ship) # This list is only used to draw the legend.
+
+    def add_ships_randomly(self):
+        for ship in generate_ships():
+            ship.orientation = choice(
+                (ShipOrientation.HORIZONTAL, ShipOrientation.VERTICAL))
+
+            while True:
+                try:
+                    ship.start = (randint(0, 9), randint(0, 9))
+                    self.add_ship(ship)
+                except (Collision, OffEdge):
+                    continue
+                else:
+                    break
