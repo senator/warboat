@@ -19,13 +19,17 @@ class Board(list):
         for i in range(10):
             self.append([blank_value, ] * 10)
 
-    def draw(self):
-        print('  1 2 3 4 5 6 7 8 9 10')
+    def draw(self, label='<NO LABEL>', highlight_player=False, draw_ships=True):
+        label = '%-16s' % label
+        print(
+            colored(label, attrs=['reverse']) if highlight_player else label,
+            end='')
+        print('   1 2 3 4 5 6 7 8 9 10')
         for row in range(10):
-            print(chr(ord('A') + row) + ' ', end='')
+            print((' ' * 17) + chr(ord('A') + row) + ' ', end='')
             for col in range(10):
                 ship = self[row][col]
-                if ship is None:
+                if ship is None or (not draw_ships): # XXX TODO still draw hits
                     s = '  '
                 else:
                     s = colored('  ', on_color='on_' + ship.color)
