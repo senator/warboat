@@ -11,28 +11,8 @@ def _input_or_prompt_quit():
         raise PromptQuit
 
 
-class PromptEnum:
-    def __init__(self, prompt_message, enum_cls):
-        self.prompt_message = prompt_message
-        self.enum_cls = enum_cls
-
-    def ask(self):
-        print(self.prompt_message)
-        for member in self.enum_cls:
-            print(f'{member.value}: {member.name.title()}')
-
-        while True:
-            ans = _input_or_prompt_quit()
-
-            try:
-                ans_int = int(ans)
-            except ValueError:
-                continue
-            try:
-                return self.enum_cls(ans_int)
-            except ValueError:
-                print('Please choose from the given options.')
-                continue
+def enum_to_prompt_dict(enum_cls):
+    return { i.value: i.name.title().replace('_', ' ') for i in enum_cls }
 
 
 class PromptDict:

@@ -1,6 +1,6 @@
 from board import Board, Collision, OffEdge
 from ship import generate_ships, ShipOrientation
-from prompt import PromptEnum, PromptGridLoc, PromptDict
+from prompt import PromptGridLoc, PromptDict, enum_to_prompt_dict
 
 
 def configure_player_board():
@@ -16,9 +16,9 @@ def configure_player_board():
         board.add_ships_randomly()
     else:
         for ship in generate_ships():
-            ship.orientation = PromptEnum(
-                f'Will your {ship.name} ({ship.length} spots) be:',
-                ShipOrientation).ask()
+            ship.orientation = ShipOrientation(
+                PromptDict(f'Will your {ship.name} ({ship.length} spots) be:',
+                    enum_to_prompt_dict(ShipOrientation)).ask())
 
             if ship.orientation == ShipOrientation.HORIZONTAL:
                 end = 'left'

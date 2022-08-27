@@ -8,7 +8,7 @@ from board import Board
 def main():
     # User's step 1: choose number of battles to play
     num_battles = PromptDict('How many battles will you try to win? ', {
-        1: 'One battles only',
+        1: 'One battle only',
         2: 'Best two out of three',
         3: 'Best three out of five'}).ask()
 
