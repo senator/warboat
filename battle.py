@@ -14,4 +14,8 @@ def battle(player_board, opponent_board, opponent):
 
         # XXX temporary
         if attack_loc == (0, 0):
-            finished = True
+            break
+
+        opponent.play_a_turn(opponent_board, player_board)
+
+    return 0

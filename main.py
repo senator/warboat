@@ -2,7 +2,7 @@
 
 from prompt import PromptQuit, PromptDict, enum_to_prompt_dict
 from player import configure_player_board
-from opponent import Opponent
+from opponent import OpponentID, get_opponent_by_id
 from battle import battle
 from board import Board
 
@@ -14,9 +14,10 @@ def main():
         3: 'Best three out of five'}).ask()
 
     # User's step 2: choose opponent (a proxy for difficulty level)
-    opponent = Opponent(
+    opponent_id = OpponentID(
         PromptDict('Whom will you challenge? ',
-            enum_to_prompt_dict(Opponent)).ask())
+            enum_to_prompt_dict(OpponentID)).ask())
+    opponent = get_opponent_by_id(opponent_id)
 
     # User's step 3: choose who goes first
     # XXX TODO
