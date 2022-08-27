@@ -1,7 +1,7 @@
-from enum import Enum
+from helpers import NiceEnum
 
 
-class ShipOrientation(Enum):
+class ShipOrientation(NiceEnum):
     VERTICAL = 1
     HORIZONTAL = 2
 

@@ -1,5 +1,7 @@
 import re
 
+from helpers import NiceEnum
+
 
 class PromptQuit(Exception): pass
 
@@ -11,8 +13,8 @@ def _input_or_prompt_quit():
         raise PromptQuit
 
 
-def enum_to_prompt_dict(enum_cls):
-    return { i.value: i.name.title().replace('_', ' ') for i in enum_cls }
+def enum_to_prompt_dict(enum_cls: NiceEnum):
+    return { i.value: i.nicename for i in enum_cls }
 
 
 class PromptDict:

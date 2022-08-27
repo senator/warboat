@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-from prompt import PromptQuit, PromptDict
+from prompt import PromptQuit, PromptDict, enum_to_prompt_dict
 from player import configure_player_board
+from opponent import Opponent
 from battle import battle
 from board import Board
 
@@ -13,7 +14,9 @@ def main():
         3: 'Best three out of five'}).ask()
 
     # User's step 2: choose opponent (a proxy for difficulty level)
-    # XXX TODO
+    opponent = Opponent(
+        PromptDict('Whom will you challenge? ',
+            enum_to_prompt_dict(Opponent)).ask())
 
     # User's step 3: choose who goes first
     # XXX TODO
@@ -27,7 +30,7 @@ def main():
         opponent_board = Board()
         opponent_board.add_ships_randomly()
 
-        if battle(player_board, opponent_board) == 0:
+        if battle(player_board, opponent_board, opponent) == 0:
             player_wins += 1
         else:
             opponent_wins += 1
