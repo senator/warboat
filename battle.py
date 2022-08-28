@@ -1,4 +1,5 @@
 import sys
+from time import sleep
 from termcolor import colored
 
 from helpers import NiceEnum
@@ -42,6 +43,8 @@ def fire(loc, board, opponent): # -> Tuple[str, BattleResult]
 def battle(referee, player_board, opponent_board, opponent):
     turn_message = "Let's play!"
     battle_result = None
+
+    opponent.to_battlestations()
 
     while True:
         whose_turn = referee.turn()
@@ -87,6 +90,7 @@ def battle(referee, player_board, opponent_board, opponent):
                 f'{opponent.nicename} takes {opponent.pronoun} turn...', end='')
             sys.stdout.flush()
 
+            sleep(2)
             turn_message, battle_result = opponent.fire(player_board)
             print()
             if battle_result:

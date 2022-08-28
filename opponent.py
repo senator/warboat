@@ -1,5 +1,7 @@
-from time import sleep
+from random import shuffle
+from termcolor import colored
 
+from battle import BattleResult, nice_grid_loc
 from helpers import NiceEnum
 
 
@@ -17,19 +19,49 @@ class Opponent:
     def nicename(self):
         return self.id_.nicename
 
+    def to_battlestations(self):
+        raise NotImplementedError
+
     def fire(self, player_board):
-        # XXX once subclasses are done, replace the following with
-        # raise NotImplementedError
-        sleep(2)
-        return ('Nothing specific happened.', None)
+        raise NotImplementedError
 
 
 class BabyBilly(Opponent):
     id_ = OpponentID.BABY_BILLY
     pronoun = 'his'
 
-#    def fire(self, player_board):
-#        pass
+    def to_battlestations(self):
+        self.targets = []
+        for rowidx in range(10):
+            for colidx in range(10):
+                self.targets.append((rowidx, colidx))
+
+        shuffle(self.targets)
+
+    def fire(self, player_board):   # -> (str, BattleResult)
+        battle_result = None
+        loc = self.targets.pop()
+        ship_struck = player_board.fire(loc)
+
+        if ship_struck is None:
+            return (f'{self.nicename} missed at {nice_grid_loc(loc)}.',
+                battle_result)
+        elif not ship_struck.has_sunk():
+            return (f"{self.nicename} hit your " +
+                colored(ship_struck.name, ship_struck.color, attrs=["reverse"]) +
+                f" at {nice_grid_loc(loc)}.", battle_result)
+        else:
+            msg = f'{self.nicename} ' + \
+                colored('SANK', 'white', attrs=["bold"]) + \
+                f' your ' + \
+                colored(ship_struck.name, ship_struck.color,
+                    attrs=["reverse"]) + \
+                f' at {nice_grid_loc(loc)}.'
+
+            if all([ship.has_sunk() for ship in board.ships]):
+                battle_result = BattleResult.OPPONENT_WINS
+
+            return (msg, battle_result)
 
 
 class RegularRoger(Opponent):
