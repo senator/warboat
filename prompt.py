@@ -4,6 +4,7 @@ from helpers import NiceEnum
 
 
 class PromptQuit(Exception): pass
+class PromptAlternate(Exception): pass
 
 
 def _input_or_prompt_quit():
@@ -44,10 +45,16 @@ class PromptDict:
 class PromptGridLoc:
     gridloc_re = re.compile(r'^[a-j](\d|10)$', re.I)
 
-    def __init__(self, prompt_message):
+    def __init__(self, prompt_message, alternates=None):
         self.prompt_message = prompt_message
+        self.alternates = alternates or ()
 
     def _parse(self, gridloc_str):
+        if gridloc_str in self.alternates:
+            e = PromptAlternate()
+            e.alternate = gridloc_str
+            raise e
+
         if not self.gridloc_re.match(gridloc_str):
             raise ValueError("Type a letter (A-J) followed by a number (1-10)")
 
@@ -66,3 +73,8 @@ class PromptGridLoc:
             except ValueError as e:
                 print(e)
                 continue
+
+
+def enter_to_continue():
+    print('Press enter', end='')
+    _input_or_prompt_quit()

@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 
+from termcolor import colored
+
 from prompt import PromptQuit, PromptDict, enum_to_prompt_dict
 from player import configure_player_board
 from opponent import OpponentID, get_opponent_by_id
-from battle import battle
+from battle import battle, BattleResult
 from board import Board
+from referee import Referee
 
 def main():
     # User's step 1: choose number of battles to play
@@ -31,15 +34,19 @@ def main():
         opponent_board = Board()
         opponent_board.add_ships_randomly()
 
-        if battle(player_board, opponent_board, opponent) == 0:
+        referee = Referee() # XXX tie to step 3 above
+        if battle(referee, player_board, opponent_board, opponent) == \
+            BattleResult.PLAYER_WINS:
             player_wins += 1
         else:
             opponent_wins += 1
 
-    # XXX TODO: make nicer victory display, use opponent's name instead of
-    # just 'computer'.
-    print("Winner:",
-        "You" if player_wins > opponent_wins else "computer", '!')
+    if player_wins > opponent_wins:
+        print(colored(f'Congratulations! You beat {opponent.nicename}!',
+            'green', attrs=['bold', 'blink']))
+    else:
+        print(colored(f'Tough luck! {opponent.nicename} beat you. :-(', 'red'))
+
 
 if __name__ == '__main__':
     try:
