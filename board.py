@@ -19,7 +19,7 @@ class Cell:
         text = '  '
 
         if self.hit:
-            text = '()'
+            text = '()' # or 'CↃ' or 'CꜾ' or '▒▒' or '░░' or '◖◗'?
             if self.ship:
                 color = 'red'
             else:
