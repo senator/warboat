@@ -45,9 +45,10 @@ class PromptDict:
 class PromptGridLoc:
     gridloc_re = re.compile(r'^[a-j](\d|10)$', re.I)
 
-    def __init__(self, prompt_message, alternates=None):
+    def __init__(self, prompt_message, alternates=None, validate=None):
         self.prompt_message = prompt_message
         self.alternates = alternates or ()
+        self.validate = validate
 
     def _parse(self, gridloc_str):
         if gridloc_str in self.alternates:
@@ -69,10 +70,16 @@ class PromptGridLoc:
             ans = _input_or_prompt_quit()
 
             try:
-                return self._parse(ans)
+                parsed = self._parse(ans)
             except ValueError as e:
-                print(e)
+                print(e, end='')
                 continue
+
+            if self.validate and not self.validate(parsed):
+                print("You've already attacked at that spot", end='')
+                continue
+
+            return parsed
 
 
 def enter_to_continue():

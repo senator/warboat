@@ -65,7 +65,8 @@ def battle(referee, player_board, opponent_board, opponent):
 
         if whose_turn is Turn.PLAYER:
             prompt_attack = PromptGridLoc(
-                turn_message + " Ctrl-C/'surrender'/target", ('surrender')).ask
+                turn_message + " Ctrl-C/'surrender'/target", ('surrender'),
+                validate=opponent_board.is_cell_unhit).ask
             try:
                 fire_loc = prompt_attack()
             except PromptAlternate as e:

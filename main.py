@@ -52,4 +52,4 @@ if __name__ == '__main__':
     try:
         main()
     except PromptQuit:
-        print('Program aborted. Goodbye!')
+        print('\nProgram aborted. Goodbye!')
