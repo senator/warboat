@@ -80,7 +80,7 @@ def battle(referee, player_board, opponent_board, opponent):
 
         if whose_turn is Turn.PLAYER:
             prompt_attack = PromptGridLoc(
-                turn_message + " Ctrl-C/'surrender'/target", ('surrender'),
+                turn_message + " Ctrl-C/'surrender'/target", ['surrender'],
                 validate=opponent_board.is_cell_unhit).ask
             try:
                 fire_loc = prompt_attack()
@@ -90,7 +90,7 @@ def battle(referee, player_board, opponent_board, opponent):
                     battle_result = BattleResult.OPPONENT_WINS
                     continue
                 else:
-                    raise RuntimeError('Unexpected') from e
+                    raise RuntimeError(f'Unexpected "{e.alternate}"') from e
 
             turn_message, battle_result = \
                 fire(fire_loc, opponent_board, opponent)
