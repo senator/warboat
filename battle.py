@@ -1,10 +1,22 @@
 import sys
 from time import sleep
+from random import choice
 from termcolor import colored
 
 from helpers import NiceEnum
 from prompt import PromptGridLoc, PromptAlternate, enter_to_continue
 from referee import Turn
+
+
+jibes = (
+    'Your cowardice is unbecoming.',
+    'Fine, be a quitter then.',
+    'What, have somewhere better to be?',
+    'Live to fight another day, eh?',
+    "Couldn't take the heat?",
+    'Okay, run home to Momma.',
+    'Outta here? See if I care!'
+)
 
 
 class BattleResult(NiceEnum):
@@ -74,7 +86,7 @@ def battle(referee, player_board, opponent_board, opponent):
                 fire_loc = prompt_attack()
             except PromptAlternate as e:
                 if e.alternate == 'surrender':
-                    turn_message = 'Your cowardice is unbecoming.' # TODO random jibes
+                    turn_message = choice(jibes)
                     battle_result = BattleResult.OPPONENT_WINS
                     continue
                 else:
