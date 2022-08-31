@@ -1,8 +1,8 @@
 from random import shuffle
 from termcolor import colored
 
-from battle import BattleResult, nice_grid_loc
-from helpers import NiceEnum
+from battle import BattleResult
+from helpers import NiceEnum, gridloc_to_str
 
 
 class OpponentID(NiceEnum):
@@ -22,8 +22,31 @@ class Opponent:
     def to_battlestations(self):
         raise NotImplementedError
 
-    def fire(self, player_board):
+    def fire(self, player_board):   # -> (str, BattleResult)
         raise NotImplementedError
+
+    def _communicate_firing_result(self, loc, ship_struck):
+        battle_result = None
+
+        if ship_struck is None:
+            return (f'{self.nicename} missed at {gridloc_to_str(loc)}.',
+                battle_result)
+        elif not ship_struck.has_sunk():
+            return (f"{self.nicename} hit your " +
+                colored(ship_struck.name, ship_struck.color, attrs=["reverse"]) +
+                f" at {gridloc_to_str(loc)}.", battle_result)
+        else:
+            msg = f'{self.nicename} ' + \
+                colored('SANK', 'white', attrs=["bold"]) + \
+                f' your ' + \
+                colored(ship_struck.name, ship_struck.color,
+                    attrs=["reverse"]) + \
+                f' at {gridloc_to_str(loc)}.'
+
+            if all([ship.has_sunk() for ship in board.ships]):
+                battle_result = BattleResult.OPPONENT_WINS
+
+            return (msg, battle_result)
 
 
 class BabyBilly(Opponent):
@@ -38,30 +61,11 @@ class BabyBilly(Opponent):
 
         shuffle(self.targets)
 
-    def fire(self, player_board):   # -> (str, BattleResult)
-        battle_result = None
+    def fire(self, player_board):
         loc = self.targets.pop()
         ship_struck = player_board.fire(loc)
 
-        if ship_struck is None:
-            return (f'{self.nicename} missed at {nice_grid_loc(loc)}.',
-                battle_result)
-        elif not ship_struck.has_sunk():
-            return (f"{self.nicename} hit your " +
-                colored(ship_struck.name, ship_struck.color, attrs=["reverse"]) +
-                f" at {nice_grid_loc(loc)}.", battle_result)
-        else:
-            msg = f'{self.nicename} ' + \
-                colored('SANK', 'white', attrs=["bold"]) + \
-                f' your ' + \
-                colored(ship_struck.name, ship_struck.color,
-                    attrs=["reverse"]) + \
-                f' at {nice_grid_loc(loc)}.'
-
-            if all([ship.has_sunk() for ship in board.ships]):
-                battle_result = BattleResult.OPPONENT_WINS
-
-            return (msg, battle_result)
+        return self._communicate_firing_result(loc, ship_struck)
 
 
 class RegularRoger(Opponent):

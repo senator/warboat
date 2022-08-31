@@ -3,7 +3,7 @@ from time import sleep
 from random import choice
 from termcolor import colored
 
-from helpers import NiceEnum
+from helpers import NiceEnum, gridloc_to_str
 from prompt import PromptGridLoc, PromptAlternate, enter_to_continue
 from referee import Turn
 
@@ -24,27 +24,21 @@ class BattleResult(NiceEnum):
     OPPONENT_WINS = 2
 
 
-def nice_grid_loc(loc):
-    row, col = loc
-
-    return chr(ord('A') + row) + str(col + 1)
-
-
 def fire(loc, board, opponent): # -> Tuple[str, BattleResult]
     ship_struck = board.fire(loc)
     battle_result = None
 
     if ship_struck is None:
-        return (f'You missed at {nice_grid_loc(loc)}.', battle_result)
+        return (f'You missed at {gridloc_to_str(loc)}.', battle_result)
     elif not ship_struck.has_sunk():
         return (f"You hit {opponent.nicename}'s " +
             colored(ship_struck.name, ship_struck.color, attrs=["reverse"]) +
-            f" at {nice_grid_loc(loc)}.", battle_result)
+            f" at {gridloc_to_str(loc)}.", battle_result)
     else:
         msg = 'You ' + colored('SANK', 'white', attrs=["bold"]) + \
             f" {opponent.nicename}'s " + \
             colored(ship_struck.name, ship_struck.color, attrs=["reverse"]) + \
-            f' at {nice_grid_loc(loc)}.'
+            f' at {gridloc_to_str(loc)}.'
 
         if all([ship.has_sunk() for ship in board.ships]):
             battle_result = BattleResult.PLAYER_WINS
