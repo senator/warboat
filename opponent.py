@@ -1,8 +1,9 @@
-from random import shuffle
+from random import shuffle, choice
 from termcolor import colored
 
 from battle import BattleResult
 from helpers import NiceEnum, gridloc_to_str
+from ship import Orientation
 
 
 def _preshuffled_targets():
@@ -14,6 +15,98 @@ def _preshuffled_targets():
 
     shuffle(targets)
     return targets
+
+
+def _gaps_in_row(row, player_board):
+    start_loc = None
+    for col in range(10):
+        if player_board[row][col].hit is False:
+            if start_loc is None:
+                start_loc = (row, col)
+        elif start_loc is not None:
+            yield _Gap(start_loc, (row, col - 1))
+            start_loc = None
+
+    if start_loc is not None:
+        yield _Gap(start_loc, (row, col))
+
+
+def _gaps_in_col(col, player_board):
+    start_loc = None
+    for row in range(10):
+        if player_board[row][col].hit is False:
+            if start_loc is None:
+                start_loc = (row, col)
+        elif start_loc is not None:
+            yield _Gap(start_loc, (row - 1, col))
+            start_loc = None
+
+    if start_loc is not None:
+        yield _Gap(start_loc, (row, col))
+
+
+class _GapIterator:
+    def __init__(self, gap):
+        self.gap = gap
+        self.offset = 0
+
+    def __next__(self):
+        if self.gap.orientation == Orientation.HORIZONTAL:
+            loc = (self.gap.start_loc[0], self.gap.start_loc[1] + self.offset)
+        else:
+            loc = (self.gap.start_loc[0] + self.offset, self.gap.start_loc[1])
+
+        if loc <= self.gap.end_loc:
+            self.offset += 1
+            return loc
+        else:
+            raise StopIteration
+
+
+class _Gap:
+    def __init__(self, start_loc, end_loc):
+        assert end_loc >= start_loc
+
+        self.start_loc = start_loc
+        self.end_loc = end_loc
+
+    def __repr__(self):
+        return self.__class__.__name__ + f'(start_loc={self.start_loc},end_loc={self.end_loc})'
+
+    @property
+    def orientation(self):
+        if self.start_loc[0] == self.end_loc[0]:
+            return Orientation.HORIZONTAL
+        else:
+            return Orientation.VERTICAL
+
+    def __iter__(self):
+        return _GapIterator(self)
+
+    def __len__(self):
+        if self.orientation == Orientation.HORIZONTAL:
+            return abs(self.start_loc[1] - self.end_loc[1]) + 1
+        else:
+            return abs(self.start_loc[0] - self.end_loc[0]) + 1
+
+    def get_center(self):
+        """ Returns the center of a gap, choosing randomly between the
+        two center points if gap length is even. """
+
+        length = len(self)
+
+        if length % 2 == 1:
+            index = length // 2
+        else:
+            index = choice([length // 2, length // 2 - 1])
+
+        return list(self)[index]
+
+    def get_intersection(self, other_gap):
+        try:
+            return set(self).intersection(set(other_gap)).pop()
+        except KeyError:
+            return None
 
 
 class _FollowUp:
@@ -76,10 +169,21 @@ class _FollowUp:
     def get_possibilities_nearest_first(self, player_board):
         if len(self.locs) == 1:
             # could be 4 ways
-            ghosts = [self._scan_up(player_board),
-                    self._scan_down(player_board),
-                    self._scan_left(player_board),
-                    self._scan_right(player_board)]
+            up = self._scan_up(player_board)
+            down = self._scan_down(player_board)
+            left = self._scan_left(player_board)
+            right = self._scan_right(player_board)
+            ghosts = []
+
+            # Sometimes we can rule out one orientation or the other
+            # even knowing only one hit on the ship if available space
+            # in one dimension is too small.
+            if len(set(up + down)) >= self.ship.length - 1:
+                ghosts.append(up)
+                ghosts.append(down)
+            if len(set(left + right)) >= self.ship.length - 1:
+                ghosts.append(left)
+                ghosts.append(right)
         else:
             # could only be 2 ways
             first, second = self.locs[:2]
@@ -197,7 +301,8 @@ class _Chaser:
 
         # Remove `loc`from the pre-generated random `targets` list, so
         # we don't try it again later.
-        self.targets.remove(loc)
+        if self.targets is not None:
+            self.targets.remove(loc)
 
         ship_struck = player_board.fire(loc)
 
@@ -241,26 +346,82 @@ class CleverClaire(_Chaser, _Opponent):
     We call this value `max_boat_len`.
 
     Then we build a list of all gaps of at least max_boat_len, in rows
-    and in columns (which overlap, but it doesn't matter) and sorting
-    them by length.  We choose the longest gap in the result list,
-    breaking ties randomly.
+    and in columns. We choose a gap that overlaps another gap if possible,
+    otherwise we just pick any gap at random.
 
-    (XXX would it not be better to pick targets that would hit multiple gaps?)
+    If we picked just one gap: we target the middle of the gap (rounding
+    randomly) if gap length is less than 2 * max_boat_len. Else target
+    the max_boat_len-th space from either end (choose which end randomly).
+    This can save shots compared with shooting the middle of long gaps.
 
-    Target the middle of the gap (rounding randomly) if gap length is less
-    than 2 * max_boat_len.  Else target the max_boat_len-th space from either
-    end (choose which end randomly).
-
+    If we picked a gap that overlaps another, we target their intersection.
     """
 
     id_ = OpponentID.CLEVER_CLAIRE
     pronoun = 'her'
 
+    def _get_longest_boat_afloat(self, player_board):
+        return max(player_board.ships,
+                key=lambda ship: ship.length if not ship.has_sunk() else 0)
+
     def to_battlestations(self):
-        pass
+        self.follow_ups = []
+        self.targets = None
+
+    def _find_best_gap(self, player_board, min_gap_len): # -> Tuple[_Gap, _Gap]
+        horizontal_gaps = []
+        for row in range(10):
+            for gap in _gaps_in_row(row, player_board):
+                if len(gap) >= min_gap_len:
+                    horizontal_gaps.append(gap)
+
+        vertical_gaps = []
+        for col in range(10):
+            for gap in _gaps_in_col(col, player_board):
+                if len(gap) >= min_gap_len:
+                    vertical_gaps.append(gap)
+
+        pairs = []
+        for horiz in horizontal_gaps:
+            for vert in vertical_gaps:
+                if horiz.get_intersection(vert) is not None:
+                    pairs.append((horiz, vert))
+
+        if len(pairs):
+            return choice(pairs)
+        else:
+            return (choice(horizontal_gaps + vertical_gaps), None)
+
+    def _target_within_gap(self, gap, max_boat_len):
+        gap_length = len(gap)
+
+        if gap_length < 2 * max_boat_len:
+            loc = gap.get_center()
+        else:
+            gap_as_list = list(gap)
+            loc = choice([
+                gap_as_list[max_boat_len - 1],
+                gap_as_list[-max_boat_len]
+            ])
+
+        return loc
 
     def fire_blind(self, player_board): # -> Tuple[Tuple[int, int], Ship]
-        target_len = self._
+        max_boat_len = self._get_longest_boat_afloat(player_board).length
+        gap, intersecting_gap = self._find_best_gap(player_board, max_boat_len)
+
+        if intersecting_gap is None:
+            print("within", gap, max_boat_len)
+            loc = self._target_within_gap(gap, max_boat_len)
+        else:
+            print("intersection", gap, intersecting_gap)
+            loc = gap.get_intersection(intersecting_gap)
+
+        ship_struck = player_board.fire(loc)
+        if ship_struck:
+            self.follow_ups.append(_FollowUp(ship_struck, loc))
+
+        return (loc, ship_struck)
 
 
 def get_opponent_by_id(id_):

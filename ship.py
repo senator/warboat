@@ -1,7 +1,7 @@
 from helpers import NiceEnum
 
 
-class ShipOrientation(NiceEnum):
+class Orientation(NiceEnum):
     VERTICAL = 1
     HORIZONTAL = 2
 

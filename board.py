@@ -1,7 +1,7 @@
 from random import choice, randint
 from termcolor import colored
 
-from ship import ShipOrientation, generate_ships
+from ship import Orientation, generate_ships
 
 class PlacementError(Exception): pass
 class Collision(PlacementError): pass
@@ -86,7 +86,7 @@ class Board(list):
             return cell.ship
 
     def add_ship(self, ship):
-        if ship.orientation == ShipOrientation.HORIZONTAL:
+        if ship.orientation == Orientation.HORIZONTAL:
             row = ship.start[0]
             col_start = ship.start[1]
             col_end = ship.start[1] + ship.length
@@ -116,7 +116,7 @@ class Board(list):
     def add_ships_randomly(self):
         for ship in generate_ships():
             ship.orientation = choice(
-                (ShipOrientation.HORIZONTAL, ShipOrientation.VERTICAL))
+                (Orientation.HORIZONTAL, Orientation.VERTICAL))
 
             while True:
                 try:
