@@ -1,5 +1,4 @@
-#import pdb
-from random import shuffle, choice
+from random import shuffle
 from termcolor import colored
 
 from battle import BattleResult
@@ -17,7 +16,7 @@ def _preshuffled_targets():
     return targets
 
 
-class FollowUp:
+class _FollowUp:
     def __init__(self, ship, initial_loc):
         self.ship = ship
         self.locs = [initial_loc]
@@ -39,7 +38,7 @@ class FollowUp:
 
             cell = player_board[row][col]
             if cell.hit:    # Be careful only to look at a cell on the
-                            # player's board if hit is True (else we're
+                            # player's board iff hit is True (else we're
                             # cheating).
                 if cell.ship is not self.ship:
                     # This cell is either a known miss or a known hit
@@ -119,7 +118,7 @@ class OpponentID(NiceEnum):
     CLEVER_CLAIRE = 3
 
 
-class Opponent:
+class _Opponent:
     id_ = NotImplemented
     pronoun = NotImplemented
 
@@ -133,7 +132,7 @@ class Opponent:
     def fire(self, player_board):   # -> (str, BattleResult)
         raise NotImplementedError
 
-    def _communicate_firing_result(self, loc, ship_struck, player_board):
+    def communicate_firing_result(self, loc, ship_struck, player_board):
         battle_result = None
 
         if ship_struck is None:
@@ -157,7 +156,9 @@ class Opponent:
             return (msg, battle_result)
 
 
-class BabyBilly(Opponent):
+class BabyBilly(_Opponent):
+    """ Only fires at random. Simplest opponent implementation. """
+
     id_ = OpponentID.BABY_BILLY
     pronoun = 'his'
 
@@ -168,39 +169,31 @@ class BabyBilly(Opponent):
         loc = self.targets.pop()
         ship_struck = player_board.fire(loc)
 
-        return self._communicate_firing_result(loc, ship_struck, player_board)
+        return self.communicate_firing_result(loc, ship_struck, player_board)
 
 
-class RegularRoger(Opponent):
-    id_ = OpponentID.REGULAR_ROGER
-    pronoun = 'his'
+class _Chaser:
+    """ A mix-in for Roger and Claire, with the logic for chasing/following
+    up when the opponent finds the player's ships in a missile strike. """
 
-    def to_battlestations(self):
-        self.targets = _preshuffled_targets()
-        self.follow_ups = []
+    def fire_blind(self, player_board):
+        raise NotImplementedError
 
-    def _fire_at_random(self, player_board):
-        loc = self.targets.pop()
-        ship_struck = player_board.fire(loc)
+    def fire(self, player_board):
+        t = self.keep_chasing(player_board) or \
+            self.fire_blind(player_board)
+        loc, ship_struck = t
 
-        if ship_struck:
-            self.follow_ups.append(FollowUp(ship_struck, loc))
+        return self.communicate_firing_result(loc, ship_struck, player_board)
 
-        return (loc, ship_struck)
-
-    def _keep_chasing(self, player_board):
+    def keep_chasing(self, player_board):   # -> Tuple[Tuple[int, int], Ship]
         try:
             follow_up = self.follow_ups[0]
         except IndexError:
             return None
 
-# XXX It should be impossible for get_possibilities_nearest_first() to
-# return an empty list at this point, unless I've got a bug still.
-#        try:
+        # The following method call should never return an empty list.
         loc = follow_up.get_possibilities_nearest_first(player_board)[0]
-#        except IndexError:
-#            pdb.set_trace()
-#            return None
 
         # Remove `loc`from the pre-generated random `targets` list, so
         # we don't try it again later.
@@ -214,24 +207,60 @@ class RegularRoger(Opponent):
             else:
                 follow_up.add_loc(loc)
         elif ship_struck is not None:
-            self.follow_ups.append(FollowUp(ship_struck, loc))
+            self.follow_ups.append(_FollowUp(ship_struck, loc))
 
         return (loc, ship_struck)
 
-    def fire(self, player_board):
-        t = self._keep_chasing(player_board) or \
-            self._fire_at_random(player_board)
-        loc, ship_struck = t
 
-        return self._communicate_firing_result(loc, ship_struck, player_board)
+class RegularRoger(_Chaser, _Opponent):
+    """ Medium-difficulty opponent. Fires randomly until hit, then chases. """
+
+    id_ = OpponentID.REGULAR_ROGER
+    pronoun = 'his'
+
+    def to_battlestations(self):
+        self.targets = _preshuffled_targets()
+        self.follow_ups = []
+
+    def fire_blind(self, player_board): # -> Tuple[Tuple[int, int], Ship]
+        loc = self.targets.pop()
+        ship_struck = player_board.fire(loc)
+
+        if ship_struck:
+            self.follow_ups.append(_FollowUp(ship_struck, loc))
+
+        return (loc, ship_struck)
 
 
-class CleverClaire(Opponent):
+class CleverClaire(_Chaser, _Opponent):
+    """ High-difficulty opponent.  Fires in pattern until hit, then chases.
+
+    Specifically, if we have nothing to chase yet, we start like so:
+
+    We get the length of the longest player ship we haven't struck so far.
+    We call this value `max_boat_len`.
+
+    Then we build a list of all gaps of at least max_boat_len, in rows
+    and in columns (which overlap, but it doesn't matter) and sorting
+    them by length.  We choose the longest gap in the result list,
+    breaking ties randomly.
+
+    (XXX would it not be better to pick targets that would hit multiple gaps?)
+
+    Target the middle of the gap (rounding randomly) if gap length is less
+    than 2 * max_boat_len.  Else target the max_boat_len-th space from either
+    end (choose which end randomly).
+
+    """
+
     id_ = OpponentID.CLEVER_CLAIRE
     pronoun = 'her'
 
-#    def fire(self, player_board):
-#        pass
+    def to_battlestations(self):
+        pass
+
+    def fire_blind(self, player_board): # -> Tuple[Tuple[int, int], Ship]
+        target_len = self._
 
 
 def get_opponent_by_id(id_):
