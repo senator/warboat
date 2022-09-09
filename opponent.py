@@ -89,7 +89,7 @@ class _Gap:
         else:
             return abs(self.start_loc[0] - self.end_loc[0]) + 1
 
-    def get_center(self):
+    def _get_center(self):
         """ Returns the center of a gap, choosing randomly between the
         two center points if gap length is even. """
 
@@ -101,6 +101,22 @@ class _Gap:
             index = choice([length // 2, length // 2 - 1])
 
         return list(self)[index]
+
+    def get_target_within(self, boat_len):
+        """ Non-deterministically choose a target location within this gap
+        that optimally subdivides it into the smallest number of remaining
+        gaps that could hide a boat of boat_len. """
+
+        if len(self) < 2 * boat_len:
+            loc = self._get_center()
+        else:
+            gap_as_list = list(self)
+            loc = choice([
+                gap_as_list[boat_len - 1],
+                gap_as_list[-boat_len]
+            ])
+
+        return loc
 
     def get_intersection(self, other_gap):
         try:
@@ -368,54 +384,64 @@ class CleverClaire(_Chaser, _Opponent):
         self.follow_ups = []
         self.targets = None
 
-    def _find_best_gap(self, player_board, min_gap_len): # -> Tuple[_Gap, _Gap]
-        horizontal_gaps = []
+    def _find_loc_furthest_from_hit(self, player_board, locs): # -> Tuple[row, col]
+        dist_squared_map = {}
+
+        def _dist_squared_to_nearest_hit(loc):
+            # There are so many ways to optimize this if needed. This is
+            # brute force and exhaustive.
+            min_so_far = 81
+            for row in range(10):
+                for col in range(10):
+                    if player_board[row][col].hit:
+                        this_dist_squared = \
+                            abs(row - loc[0]) ** 2 + abs(col - loc[1]) ** 2
+                        if this_dist_squared < min_so_far:
+                            min_so_far = this_dist_squared
+
+            return min_so_far
+
+        for loc in locs:
+            # This will frequently clobber dict items (locs) already indexed
+            # under the same distance, but for our purposes that's fine!
+            dist_squared_map[_dist_squared_to_nearest_hit(loc)] = loc
+
+        return dist_squared_map[max(dist_squared_map)]
+
+    def _find_optimal_locs(self, player_board, min_gap_len): # -> set
+        horizontal_gaps = set()
         for row in range(10):
             for gap in _gaps_in_row(row, player_board):
                 if len(gap) >= min_gap_len:
-                    horizontal_gaps.append(gap)
+                    horizontal_gaps.add(gap)
 
-        vertical_gaps = []
+        vertical_gaps = set()
         for col in range(10):
             for gap in _gaps_in_col(col, player_board):
                 if len(gap) >= min_gap_len:
-                    vertical_gaps.append(gap)
+                    vertical_gaps.add(gap)
 
-        pairs = []
+        used_in_ixns = set()
+        ixnlocs = list()
         for horiz in horizontal_gaps:
             for vert in vertical_gaps:
-                if horiz.get_intersection(vert) is not None:
-                    pairs.append((horiz, vert))
+                if (ixnloc := horiz.get_intersection(vert)) is not None:
+                    ixnlocs.append(ixnloc)
+                    used_in_ixns.add(horiz)
+                    used_in_ixns.add(vert)
 
-        if len(pairs):
-            return choice(pairs)
-        else:
-            return (choice(horizontal_gaps + vertical_gaps), None)
+        leftover_gaps = (horizontal_gaps | vertical_gaps) - used_in_ixns
+        result_list = ixnlocs + \
+            [ gap.get_target_within(min_gap_len) for gap in leftover_gaps ]
 
-    def _target_within_gap(self, gap, max_boat_len):
-        gap_length = len(gap)
-
-        if gap_length < 2 * max_boat_len:
-            loc = gap.get_center()
-        else:
-            gap_as_list = list(gap)
-            loc = choice([
-                gap_as_list[max_boat_len - 1],
-                gap_as_list[-max_boat_len]
-            ])
-
-        return loc
+        shuffle(result_list)
+        return result_list
 
     def fire_blind(self, player_board): # -> Tuple[Tuple[int, int], Ship]
         max_boat_len = self._get_longest_boat_afloat(player_board).length
-        gap, intersecting_gap = self._find_best_gap(player_board, max_boat_len)
 
-        if intersecting_gap is None:
-            print("within", gap, max_boat_len)
-            loc = self._target_within_gap(gap, max_boat_len)
-        else:
-            print("intersection", gap, intersecting_gap)
-            loc = gap.get_intersection(intersecting_gap)
+        locs = self._find_optimal_locs(player_board, max_boat_len)
+        loc = self._find_loc_furthest_from_hit(player_board, locs)
 
         ship_struck = player_board.fire(loc)
         if ship_struck:
